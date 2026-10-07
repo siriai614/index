@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google連動 FXデモトレード</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; }
+        .card { background: white; max-width: 400px; margin: 15px auto; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .rate { font-size: 36px; font-weight: bold; color: #1a73e8; margin: 10px 0; }
+        button { font-size: 16px; padding: 12px 24px; margin: 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-refresh { background: #e2e8f0; color: #4a5568; }
+        .btn-buy { background: #ecc94b; color: #2d3748; }
+        .btn-settle { background: #f56565; color: white; }
+        #user-name { color: #2b6cb0; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>FX 擬似体験サイト</h1>
+    <p>こんにちは、<span id="user-name">取得中...</span> さん</p>
+    
+    <div class="card">
+        <h3>米ドル / 日本円 (USD/JPY)</h3>
+        <div class="rate" id="current-rate">￥---.--</div>
+        <button class="btn-refresh" onclick="refreshData()">レート更新</button>
+    </div>
+
+    <div class="card">
+        <h3>あなたの口座情報</h3>
+        <p>口座残高: <span id="balance">0</span> 円</p>
+        <p>保有数量: <span id="holdings">0</span> USD</p>
+        <p>平均取得価格: <span id="avg-price">0</span> 円</p>
+    </div>
+
+    <div>
+        <button class="btn-buy" onclick="placeOrder('BUY')">1万ドル 買う (Buy)</button>
+        <button class="btn-settle" onclick="placeOrder('SETTLE')">全ポジション 決済</button>
+    </div>
+
+    <script>
+        // 発行いただいたGASのURLを設定しました
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxORH2Emtri0BOFQkrBSKlQXsngCTjId267zUmeNC511OY6wCfM0AoHGoCXihowaTUU/exec"; 
+        let currentRate = 0;
+
+        async function refreshData() {
+            document.getElementById("current-rate").innerText = "取得中...";
+            try {
+                const response = await fetch(GAS_URL);
+                const data = await response.json();
+                
+                currentRate = data.rate;
+                document.getElementById("user-name").innerText = data.userName;
+                document.getElementById("current-rate").innerText = `￥${data.rate.toFixed(2)}`;
+                document.getElementById("balance").innerText = Math.round(data.balance).toLocaleString();
+                document.getElementById("holdings").innerText = data.holdings.toLocaleString();
+                document.getElementById("avg-price").innerText = data.avgPrice.toFixed(2);
+            } catch (error) {
+                alert("データの取得に失敗しました。GASのアクセス権設定やログイン状態を確認してください。");
+            }
+        }
+
+        async function placeOrder(action) {
+            if (!currentRate) return alert("レートを更新してください");
+            if (!confirm(`${action === 'BUY' ? '1万ドル購入' : '全ポジション決済'} しますか？`)) return;
+
+            try {
+                const response = await fetch(GAS_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ action: action, rate: currentRate })
+                });
+                const result = await response.json();
+                alert(result.message);
+                refreshData(); 
+            } catch (error) {
+                alert("注文の送信に失敗しました。");
+            }
+        }
+
+        // 初回読み込み
+        refreshData();
+    </script>
+</body>
+</html>
